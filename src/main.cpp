@@ -49,7 +49,7 @@ int main()
         {
             try
             {
-                return mqtt_client(mqtt_hostname, mqtt_port, mqtt_client_id, mqtt_user, mqtt_pass);
+                return mqtt_client(mqtt_client_id, mqtt_hostname, mqtt_port, mqtt_user, mqtt_pass);
             } catch (std::runtime_error& err)
             {
                 printf("MQTT connection could not be established %s \n", err.what());

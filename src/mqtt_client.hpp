@@ -23,7 +23,8 @@ void connect_wifi(const char *ssid, const char *pass, uint32_t auth = CYW43_AUTH
 
 struct mqtt_client
 {
-    mqtt_client(const char* hostname, const uint32_t port, const char* client_id, const char* user = nullptr, const char* pass = nullptr);
+    mqtt_client(const char* client_id, ip_addr_t remote_addr, const uint32_t port = 1883, const char* user = nullptr, const char* pass = nullptr);
+    mqtt_client(const char* client_id, const char* hostname, const uint32_t port, const char* user = nullptr, const char* pass = nullptr);
 
     void publish(const char* topic, const void* data, uint32_t data_len);
 

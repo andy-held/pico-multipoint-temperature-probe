@@ -112,10 +112,9 @@ ip_addr_t run_dns_lookup(const char* hostname)
     return query_status.ip;
 }
 
-mqtt_client::mqtt_client(const char* hostname, const uint32_t port, const char* client_id, const char* user, const char* pass)
+mqtt_client::mqtt_client(const char* client_id, ip_addr_t remote_addr_in, const uint32_t port, const char* user, const char* pass):
+    remote_addr(remote_addr_in)
 {
-    remote_addr = run_dns_lookup(hostname);
-
     lwip_mqtt_client = mqtt_client_new();
     struct mqtt_connect_client_info_t ci;
     err_t err;
@@ -153,6 +152,17 @@ mqtt_client::mqtt_client(const char* hostname, const uint32_t port, const char* 
 
 
     printf("MQTT connected.\n");
+}
+
+mqtt_client::mqtt_client(const char* client_id, const char* hostname, const uint32_t port, const char* user, const char* pass):
+    mqtt_client(
+        client_id,
+        run_dns_lookup(hostname),
+        port,
+        user,
+        pass
+    )
+{
 }
 
 void mqtt_client::publish(const char* topic, const void *data, uint32_t data_len)
