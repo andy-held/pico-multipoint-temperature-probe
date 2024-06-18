@@ -17,10 +17,6 @@ std::tuple<const void*, uint32_t> get_data_view(const T& data)
 template<>
 std::tuple<const void*, uint32_t> get_data_view<std::string>(const std::string& data);
 
-void init_wifi(uint32_t country);
-
-void connect_wifi(const char *ssid, const char *pass, uint32_t auth = CYW43_AUTH_WPA2_AES_PSK, const uint32_t timeout = 10000);
-
 struct mqtt_client
 {
     mqtt_client(const char* client_id, ip_addr_t remote_addr, const uint32_t port = 1883, const char* user = nullptr, const char* pass = nullptr);

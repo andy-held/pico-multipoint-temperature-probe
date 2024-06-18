@@ -6,6 +6,7 @@ add_executable(picomultipointtemp
     onewire.cpp
     ds18b20_host.cpp
     mqtt_client.cpp
+    wifi.cpp
 )
 
 target_include_directories(picomultipointtemp PRIVATE

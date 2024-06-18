@@ -1,6 +1,7 @@
 #include <onewire.hpp>
 #include <ds18b20_host.hpp>
 #include <mqtt_client.hpp>
+#include <wifi.hpp>
 
 #include <pico/binary_info.h>
 #include <pico/cyw43_arch.h>
@@ -28,12 +29,12 @@ int main()
     stdio_init_all();
     printf("Start multi-point temperature probe %s\n", mqtt_client_id);
 
-    init_wifi(CYW43_COUNTRY_GERMANY);
+    wifi::init(CYW43_COUNTRY_GERMANY);
     while(true)
     {
         try
         {
-            connect_wifi(wifi_ssid, wifi_password);
+            wifi::connect(wifi_ssid, wifi_password);
             break;
         } catch (std::runtime_error& err)
         {
