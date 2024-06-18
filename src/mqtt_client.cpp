@@ -193,3 +193,8 @@ void mqtt_client::publish(const char* topic, const void *data, uint32_t data_len
         printf("MQTT publish failed: %d\n", status.error);
     }
 }
+
+bool mqtt_client::is_connected()
+{
+    return static_cast<bool>(mqtt_client_is_connected(lwip_mqtt_client));
+}

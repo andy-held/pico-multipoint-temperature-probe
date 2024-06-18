@@ -35,6 +35,8 @@ struct mqtt_client
         publish(topic, ptr, len);
     }
 
+    bool is_connected();
+
     ip_addr_t remote_addr;
     mqtt_client_t* lwip_mqtt_client;
 };
