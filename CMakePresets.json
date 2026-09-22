@@ -51,5 +51,15 @@
                 "CMAKE_BUILD_TYPE": "Release"
             }
         }
+    ],
+    "buildPresets": [
+        {
+            "name": "unixlike-debug",
+            "configurePreset": "unixlike-debug"
+        },
+        {
+            "name": "unixlike-release",
+            "configurePreset": "unixlike-release"
+        }
     ]
 }
