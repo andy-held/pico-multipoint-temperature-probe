@@ -100,6 +100,11 @@ endif()
 
 # Add other targets that you want installed here, be default we just package the one executable
 # we know we want to ship
+# project_options resets policies to CMake 3.18 inside package_project().
+# Use extraction-time timestamps for its downloaded dependencies.
+if(POLICY CMP0135)
+  set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
+endif()
 package_project(TARGETS picomultipointtemp project_options project_warnings)
 
 # Experience shows that explicit package naming can help make it easier to sort
