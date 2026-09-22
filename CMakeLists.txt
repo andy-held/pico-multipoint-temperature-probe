@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16...3.23)
+cmake_minimum_required(VERSION 3.21...3.28)
 
 # initialize pico-sdk from submodule
 # note: this must happen before project()
@@ -6,6 +6,9 @@ if(DEFINED ENV{PICO_SDK_PATH})
     set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
 endif()
 include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
+if(PICO_SDK_VERSION_STRING VERSION_LESS "2.3.1")
+    message(FATAL_ERROR "Pico SDK 2.3.1 or newer is required; found ${PICO_SDK_VERSION_STRING}.")
+endif()
 
 # Not ideal to use this global variable, but necessary to make sure
 # that tooling and projects use the same version

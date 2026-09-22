@@ -4,6 +4,9 @@
 #include <lwip/apps/mqtt.h>
 
 #include <stdexcept>
+#include <string_view>
+#include <stdio.h>
+#include <string.h>
 
 namespace
 {
