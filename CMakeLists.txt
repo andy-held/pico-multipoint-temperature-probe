@@ -1,11 +1,14 @@
 cmake_minimum_required(VERSION 3.21...3.28)
 
-# initialize pico-sdk from submodule
-# note: this must happen before project()
-if(DEFINED ENV{PICO_SDK_PATH})
-    set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
+# Initialize the local Pico SDK before project(). Prefer an explicit CMake
+# setting over the environment so different SDK checkouts can be selected.
+if(NOT PICO_SDK_PATH AND DEFINED ENV{PICO_SDK_PATH})
+    set(PICO_SDK_PATH "$ENV{PICO_SDK_PATH}")
 endif()
-include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
+if(NOT PICO_SDK_PATH OR NOT EXISTS "${PICO_SDK_PATH}/pico_sdk_init.cmake")
+    message(FATAL_ERROR "Set PICO_SDK_PATH to a Pico SDK 2.3.1 or newer checkout.")
+endif()
+include("${PICO_SDK_PATH}/pico_sdk_init.cmake")
 if(PICO_SDK_VERSION_STRING VERSION_LESS "2.3.1")
     message(FATAL_ERROR "Pico SDK 2.3.1 or newer is required; found ${PICO_SDK_VERSION_STRING}.")
 endif()
