@@ -27,11 +27,6 @@
                     "Darwin"
                 ]
             },
-            "vendor": {
-                "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
-                    "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
-                }
-            },
             "cacheVariables": {
                 "PICO_BOARD": "pico_w",
                 "PICO_PLATFORM": "rp2040",
