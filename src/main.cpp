@@ -53,10 +53,10 @@ int main()
     {
         if (!wifi::is_connected())
         {
+            mqtt.reset();
             try
             {
                 wifi::connect(wifi_ssid, wifi_password);
-                break;
             } catch (std::runtime_error& err)
             {
                 printf("WIFI connection could not be established: %s \n", err.what());
@@ -95,11 +95,32 @@ int main()
                 sprintf(topic_str_buf.data() + topic_prefix.size(), "%llx", reading.identifier);
                 auto temp = reading.temperature * 0.0625f;
                 auto temp_str_char_count = sprintf(temp_str_buf.data(), "%6.2f", temp);
-                mqtt->publish(topic_str_buf.data(), temp_str_buf.data(), temp_str_char_count);
+                if (!mqtt->publish(topic_str_buf.data(), temp_str_buf.data(), temp_str_char_count))
+                {
+                    printf("MQTT publish failed; reconnecting\n");
+                    mqtt.reset();
+                    break;
+                }
                 printf("%s : %s\n", topic_str_buf.data(), temp_str_buf.data());
+            }
+            if (!mqtt)
+            {
+                break;
             }
         }
 
-        sleep_ms(58000);
+        if (!mqtt)
+        {
+            continue;
+        }
+
+        for (int seconds = 0; seconds < 58; ++seconds)
+        {
+            if (!wifi::is_connected() || !mqtt->is_connected())
+            {
+                break;
+            }
+            sleep_ms(1000);
+        }
     }
 }

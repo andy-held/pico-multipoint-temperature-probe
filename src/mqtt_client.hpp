@@ -21,18 +21,26 @@ struct mqtt_client
 {
     mqtt_client(const char* client_id, ip_addr_t remote_addr, const uint32_t port = 1883, const char* user = nullptr, const char* pass = nullptr);
     mqtt_client(const char* client_id, const char* hostname, const uint32_t port, const char* user = nullptr, const char* pass = nullptr);
+    ~mqtt_client();
 
-    void publish(const char* topic, const void* data, uint32_t data_len);
+    mqtt_client(const mqtt_client&) = delete;
+    mqtt_client& operator=(const mqtt_client&) = delete;
+
+    bool publish(const char* topic, const void* data, uint32_t data_len);
 
     template<typename T>
-    void publish(const char* topic, const T& data)
+    bool publish(const char* topic, const T& data)
     {
         auto [ptr, len] = get_data_view(data);
-        publish(topic, ptr, len);
+        return publish(topic, ptr, len);
     }
 
     bool is_connected();
 
+private:
+    void close();
+
     ip_addr_t remote_addr;
-    mqtt_client_t* lwip_mqtt_client;
+    mqtt_client_t* lwip_mqtt_client = nullptr;
+    volatile int connection_status = -1;
 };

@@ -34,14 +34,16 @@ struct MQTT_Connection_Status
             return "Disconnected";
         case MQTT_CONNECT_TIMEOUT:
             return "Timeout";
+        default:
+            return "Unknown error";
         }
     }
 };
 
 struct MQTT_Publish_Status
 {
-    err_t error = 0;
-    bool published = false;
+    volatile err_t error = ERR_OK;
+    volatile bool published = false;
 };
 
 struct DNS_Query_Status
@@ -89,7 +91,7 @@ ip_addr_t run_dns_lookup(const char* hostname)
         }
     }
 
-    if (err == ERR_ARG || query_status.failed)
+    if ((err != ERR_OK && err != ERR_INPROGRESS) || query_status.failed)
     {
         throw std::runtime_error("DNS lookup failed.");
     }
@@ -101,7 +103,13 @@ ip_addr_t run_dns_lookup(const char* hostname)
 mqtt_client::mqtt_client(const char* client_id, ip_addr_t remote_addr_in, const uint32_t port, const char* user, const char* pass):
     remote_addr(remote_addr_in)
 {
+    cyw43_arch_lwip_begin();
     lwip_mqtt_client = mqtt_client_new();
+    cyw43_arch_lwip_end();
+    if (!lwip_mqtt_client)
+    {
+        throw std::runtime_error("Could not allocate MQTT client");
+    }
     struct mqtt_connect_client_info_t ci;
     err_t err;
 
@@ -110,28 +118,31 @@ mqtt_client::mqtt_client(const char* client_id, ip_addr_t remote_addr_in, const 
     ci.client_id = client_id;
     ci.client_user = user;
     ci.client_pass = pass;
-    ci.keep_alive = 0;
+    ci.keep_alive = 30;
     ci.will_topic = NULL;
 
     auto connection_cb = [](mqtt_client_t* /*client*/, void* arg, mqtt_connection_status_t status)
     {
-        MQTT_Connection_Status* connection_status = reinterpret_cast<MQTT_Connection_Status*>(arg);
-        connection_status->status = status;
+        *static_cast<volatile int*>(arg) = status;
     };
 
-    MQTT_Connection_Status connection_status;
-    err = mqtt_client_connect(lwip_mqtt_client, &remote_addr, port, connection_cb, &connection_status, &ci);
+    cyw43_arch_lwip_begin();
+    err = mqtt_client_connect(lwip_mqtt_client, &remote_addr, port, connection_cb, const_cast<int*>(&connection_status), &ci);
+    cyw43_arch_lwip_end();
 
     if (err != ERR_OK)
     {
+        close();
         throw std::runtime_error(std::string("mqtt_connect returned ") + std::to_string(err));
     }
 
-    while(!mqtt_client_is_connected(lwip_mqtt_client))
+    while(!is_connected())
     {
-        if(connection_status.status > 0)
+        if(connection_status > 0)
         {
-            throw std::runtime_error(std::string("MQTT connection failed: ") + std::string(std::string_view(connection_status)));
+            MQTT_Connection_Status status{connection_status};
+            close();
+            throw std::runtime_error(std::string("MQTT connection failed: ") + std::string(std::string_view(status)));
         }
         sleep_ms(5);
     }
@@ -151,7 +162,24 @@ mqtt_client::mqtt_client(const char* client_id, const char* hostname, const uint
 {
 }
 
-void mqtt_client::publish(const char* topic, const void *data, uint32_t data_len)
+mqtt_client::~mqtt_client()
+{
+    close();
+}
+
+void mqtt_client::close()
+{
+    if (lwip_mqtt_client)
+    {
+        cyw43_arch_lwip_begin();
+        mqtt_disconnect(lwip_mqtt_client);
+        mqtt_client_free(lwip_mqtt_client);
+        cyw43_arch_lwip_end();
+        lwip_mqtt_client = nullptr;
+    }
+}
+
+bool mqtt_client::publish(const char* topic, const void *data, uint32_t data_len)
 {
     auto pub_request_cb = [](void *callback_arg, err_t err)
     {
@@ -168,19 +196,33 @@ void mqtt_client::publish(const char* topic, const void *data, uint32_t data_len
     if (err != ERR_OK)
     {
         printf("MQTT calling publish returned error: %d\n", err);
+        return false;
     }
 
+    const auto deadline = make_timeout_time_ms(10000);
     while(!status.published)
     {
+        if (!is_connected() || time_reached(deadline))
+        {
+            cyw43_arch_lwip_begin();
+            mqtt_disconnect(lwip_mqtt_client);
+            cyw43_arch_lwip_end();
+            return false;
+        }
         sleep_ms(5);
     }
     if(status.error != ERR_OK)
     {
         printf("MQTT publish failed: %d\n", status.error);
+        return false;
     }
+    return true;
 }
 
 bool mqtt_client::is_connected()
 {
-    return static_cast<bool>(mqtt_client_is_connected(lwip_mqtt_client));
+    cyw43_arch_lwip_begin();
+    const bool connected = mqtt_client_is_connected(lwip_mqtt_client);
+    cyw43_arch_lwip_end();
+    return connected;
 }
