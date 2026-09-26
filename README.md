@@ -38,6 +38,9 @@ Use `unixlike-debug` in both commands for a debug build. When upgrading an exist
 build from an older SDK, add `--fresh` to the configure command (CMake 3.24 or newer),
 or remove that preset's build directory before configuring.
 
+The firmware reboots if no MQTT publish succeeds for three minutes, including during
+startup. Change `no_publish_timeout_ms` in `src/main.cpp` to adjust this interval.
+
 The first configure downloads `project_options` and, unless a compatible installation
 is available, the SDK's matching `picotool`. Internet access is needed for these
 downloads. `picotool` generates UF2 files in SDK 2.x; CMake builds it automatically.

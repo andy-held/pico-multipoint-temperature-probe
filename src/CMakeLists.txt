@@ -19,6 +19,7 @@ target_link_libraries(picomultipointtemp PRIVATE
     pico_lwip_mqtt
     hardware_pio
     hardware_exception
+    hardware_watchdog
     project_options
     project_warnings
 )

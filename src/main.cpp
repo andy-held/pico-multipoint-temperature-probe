@@ -6,6 +6,7 @@
 #include <pico/binary_info.h>
 #include <pico/cyw43_arch.h>
 #include <pico/stdlib.h>
+#include <hardware/watchdog.h>
 
 #include <array>
 #include <bitset>
@@ -23,12 +24,44 @@ constexpr const char* mqtt_pass = "";
 constexpr const char* mqtt_client_id = "picoW";
 constexpr const std::string_view topic_prefix = "picoW/temperature/";
 
+namespace
+{
+constexpr uint32_t no_publish_timeout_ms = 3 * 60 * 1000;
+constexpr uint32_t watchdog_timeout_ms = 8000;
+// Main and the timer callback run on core 0; aligned 32-bit accesses are atomic.
+volatile uint32_t last_publish_ms = 0;
+repeating_timer_t watchdog_timer;
+
+bool feed_watchdog_if_publishing(repeating_timer_t*)
+{
+    const uint32_t now = to_ms_since_boot(get_absolute_time());
+    const uint32_t last = last_publish_ms;
+    if (now - last < no_publish_timeout_ms)
+    {
+        watchdog_update();
+    }
+    return true;
+}
+}
+
 int main()
 {
     bi_decl(bi_program_description("This is a multi-point temperature probe"));
 
     stdio_init_all();
     printf("Start multi-point temperature probe %s\n", mqtt_client_id);
+    if (watchdog_caused_reboot())
+    {
+        printf("Restarted by watchdog\n");
+    }
+
+    last_publish_ms = to_ms_since_boot(get_absolute_time());
+    watchdog_enable(watchdog_timeout_ms, true);
+    if (!add_repeating_timer_ms(1000, feed_watchdog_if_publishing, nullptr, &watchdog_timer))
+    {
+        printf("Could not start watchdog feed timer\n");
+        while (true) { tight_loop_contents(); }
+    }
 
     wifi::init(CYW43_COUNTRY_GERMANY);
 
@@ -69,6 +102,7 @@ int main()
                     auto temp = reading.temperature * 0.0625f;
                     auto temp_str_char_count = sprintf(temp_str_buf.data(), "%6.2f", static_cast<double>(temp));
                     mqtt->publish(topic_str_buf.data(), temp_str_buf.data(), temp_str_char_count);
+                    last_publish_ms = to_ms_since_boot(get_absolute_time());
                     printf("%s : %s\n", topic_str_buf.data(), temp_str_buf.data());
                 }
             }
