@@ -1,6 +1,6 @@
-#include <onewire.hpp>
 #include <ds18b20_host.hpp>
 #include <mqtt_client.hpp>
+#include <onewire.hpp>
 #include <wifi.hpp>
 
 #include <pico/binary_info.h>
@@ -10,8 +10,8 @@
 #include <array>
 #include <bitset>
 #include <memory>
-#include <stdio.h>
 #include <stdexcept>
+#include <stdio.h>
 #include <string_view>
 
 constexpr const char* wifi_ssid = "";
@@ -32,95 +32,60 @@ int main()
 
     wifi::init(CYW43_COUNTRY_GERMANY);
 
-    std::array<onewire, 2> wires
-    {
-        onewire(15, 14),
-        onewire(17, 16)
-    };
+    std::array<onewire, 2> wires{ onewire(15, 14), onewire(17, 16) };
 
-    std::array<ds18b20_host, 2> hosts
-    {
-        ds18b20_host(wires[0]),
-        ds18b20_host(wires[1])
-    };
+    std::array<ds18b20_host, 2> hosts{ ds18b20_host(wires[0]), ds18b20_host(wires[1]) };
 
     std::unique_ptr<mqtt_client> mqtt;
 
     std::array<char, topic_prefix.size() + 17> topic_str_buf;
     std::copy(topic_prefix.begin(), topic_prefix.end(), topic_str_buf.data());
     std::array<char, 9> temp_str_buf;
-    while(true)
+    while (true)
     {
-        if (!wifi::is_connected())
+        try
         {
-            mqtt.reset();
-            try
+            if (!wifi::is_connected())
             {
+                mqtt.reset();
                 wifi::connect(wifi_ssid, wifi_password);
-            } catch (std::runtime_error& err)
-            {
-                printf("WIFI connection could not be established: %s \n", err.what());
-                printf("Retrying in 10 seconds\n");
-                sleep_ms(10000);
-                continue;
             }
-        }
 
-        if (!mqtt || !mqtt->is_connected())
-        {
-            try
+            if (!mqtt || !mqtt->is_connected())
             {
                 mqtt = std::make_unique<mqtt_client>(mqtt_client_id, mqtt_hostname, mqtt_port, mqtt_user, mqtt_pass);
-            } catch (std::runtime_error& err)
-            {
-                printf("MQTT connection could not be established %s \n", err.what());
-                printf("Retrying in 10 seconds\n");
-                sleep_ms(10000);
-                continue;
             }
-        }
 
-        for(const auto& host: hosts)
-        {
-            host.request_readings();
-        }
+            for (const auto &host : hosts) { host.request_readings(); }
 
-        sleep_ms(760); /* 12bit: max. 750 ms */
+            sleep_ms(760); /* 12bit: max. 750 ms */
 
-        for(auto& host: hosts)
-        {
-            const auto readings = host.retrieve_readings();
-            for(const auto reading: readings)
+            for (auto &host : hosts)
             {
-                sprintf(topic_str_buf.data() + topic_prefix.size(), "%llx", reading.identifier);
-                auto temp = reading.temperature * 0.0625f;
-                auto temp_str_char_count = sprintf(temp_str_buf.data(), "%6.2f", temp);
-                if (!mqtt->publish(topic_str_buf.data(), temp_str_buf.data(), temp_str_char_count))
+                const auto readings = host.retrieve_readings();
+                for (const auto reading : readings)
                 {
-                    printf("MQTT publish failed; reconnecting\n");
-                    mqtt.reset();
-                    break;
+                    sprintf(topic_str_buf.data() + topic_prefix.size(), "%llx", reading.identifier);
+                    auto temp = reading.temperature * 0.0625f;
+                    auto temp_str_char_count = sprintf(temp_str_buf.data(), "%6.2f", static_cast<double>(temp));
+                    mqtt->publish(topic_str_buf.data(), temp_str_buf.data(), temp_str_char_count);
+                    printf("%s : %s\n", topic_str_buf.data(), temp_str_buf.data());
                 }
-                printf("%s : %s\n", topic_str_buf.data(), temp_str_buf.data());
             }
-            if (!mqtt)
+
+            for (int seconds = 0; seconds < 58; ++seconds)
             {
-                break;
+                if (!wifi::is_connected() || !mqtt->is_connected()) { break; }
+                sleep_ms(1000);
             }
         }
-
-        if (!mqtt)
+        catch (const std::runtime_error& err)
         {
+            mqtt.reset();
+            printf("%s \n", err.what());
+            printf("Retrying in 10 seconds\n");
+            sleep_ms(10000);
             continue;
-        }
-
-        for (int seconds = 0; seconds < 58; ++seconds)
-        {
-            if (!wifi::is_connected() || !mqtt->is_connected())
-            {
-                break;
-            }
-            sleep_ms(1000);
         }
     }
 }

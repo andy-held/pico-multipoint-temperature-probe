@@ -26,10 +26,10 @@ struct mqtt_client
     mqtt_client(const mqtt_client&) = delete;
     mqtt_client& operator=(const mqtt_client&) = delete;
 
-    bool publish(const char* topic, const void* data, uint32_t data_len);
+    void publish(const char* topic, const void* data, uint32_t data_len);
 
     template<typename T>
-    bool publish(const char* topic, const T& data)
+    void publish(const char* topic, const T& data)
     {
         auto [ptr, len] = get_data_view(data);
         return publish(topic, ptr, len);

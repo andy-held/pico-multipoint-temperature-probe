@@ -179,7 +179,7 @@ void mqtt_client::close()
     }
 }
 
-bool mqtt_client::publish(const char* topic, const void *data, uint32_t data_len)
+void mqtt_client::publish(const char* topic, const void *data, uint32_t data_len)
 {
     auto pub_request_cb = [](void *callback_arg, err_t err)
     {
@@ -195,8 +195,7 @@ bool mqtt_client::publish(const char* topic, const void *data, uint32_t data_len
     cyw43_arch_lwip_end();
     if (err != ERR_OK)
     {
-        printf("MQTT calling publish returned error: %d\n", err);
-        return false;
+        throw std::runtime_error("MQTT calling publish returned error: " + std::to_string(err));
     }
 
     const auto deadline = make_timeout_time_ms(10000);
@@ -207,16 +206,14 @@ bool mqtt_client::publish(const char* topic, const void *data, uint32_t data_len
             cyw43_arch_lwip_begin();
             mqtt_disconnect(lwip_mqtt_client);
             cyw43_arch_lwip_end();
-            return false;
+            throw std::runtime_error("Timeout waiting for MQTT publish MQTT");
         }
         sleep_ms(5);
     }
     if(status.error != ERR_OK)
     {
-        printf("MQTT publish failed: %d\n", status.error);
-        return false;
+        throw std::runtime_error("MQTT publish failed: " + std::to_string(status.error));
     }
-    return true;
 }
 
 bool mqtt_client::is_connected()
