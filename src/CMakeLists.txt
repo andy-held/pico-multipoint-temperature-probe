@@ -7,6 +7,7 @@ add_executable(picomultipointtemp
     ds18b20_host.cpp
     mqtt_client.cpp
     wifi.cpp
+    watchdog.cpp
 )
 
 target_include_directories(picomultipointtemp PRIVATE
